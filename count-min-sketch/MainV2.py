@@ -63,7 +63,7 @@ class MainV2:
 
     def _saveFilterStateGraph(self, filterStateItem):
         plt.figure(figsize=(15, 4))
-        sns.heatmap(filterStateItem["state"], cbar_kws={'orientation': 'horizontal'}, cmap='viridis')
+        sns.heatmap(filterStateItem["state"], cbar_kws={'orientation': 'horizontal'}, cmap='Wistia')
         plt.title(f"CMS State (Rows: {self.numHashFuncs}, Width: {self.width}, Input Size: {filterStateItem['inputSetSize']})")
         
         savePath = Path(self.directoryPath) / str(filterStateItem["inputSetSize"])

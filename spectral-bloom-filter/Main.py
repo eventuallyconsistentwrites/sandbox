@@ -61,7 +61,7 @@ class Main:
     def _saveFilterStateGraph(self, filterStateItem):
         state = np.array(filterStateItem["state"]).reshape(1, -1)
         plt.figure(figsize=(15, 4))
-        plt.imshow(state, aspect='auto', cmap='viridis')
+        plt.imshow(state, aspect='auto', cmap='Wistia')
         plt.colorbar(orientation='horizontal')
         plt.title(f"SBF State (Width: {filterStateItem['width']})")
         
