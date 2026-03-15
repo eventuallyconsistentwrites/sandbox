@@ -25,6 +25,13 @@ Executing
 
 `python3 -m count-min-sketch.MainV2`
 
+## HyperLogLog
+Path: [`hyperloglog`](https://github.com/eventuallyconsistentwrites/sandbox/tree/main/hyperloglog)
+
+Executing
+
+`python3 -m hyperloglog.Main`
+
 ## Common
 Path: [`common`](https://github.com/eventuallyconsistentwrites/sandbox/tree/main/common)
 
