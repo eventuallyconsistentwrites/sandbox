@@ -122,3 +122,78 @@ class BenchmarkEngine:
             writer.writerow(["Structure", "Merge_Time_ms", "Memory_Bytes"])
             writer.writerow(["HashSet", set_merge_time, set_mem])
             writer.writerow(["HyperLogLog", hll_merge_time, hll_mem])
+
+    def run_intersection_benchmark(self, filename="intersection_results.csv", runs=50):
+        filepath = os.path.join(tempfile.gettempdir(), filename)
+        print(f"\nRunning Intersection Trap Benchmark (Averaged over {runs} runs)... saving to {filepath}")
+        
+        base_size = 50000
+        # Overlap percentages: 100%, 50%, 25%, 10%, 5%, 1%
+        overlap_pcts = [1.0, 0.5, 0.25, 0.10, 0.05, 0.01]
+        
+        with open(filepath, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Overlap_Pct", "True_Intersection", "HLL_Intersection", "Error_Pct"])
+            
+            for pct in overlap_pcts:
+                total_true_intersection = 0
+                total_est_intersection = 0
+                total_error_pct = 0
+                
+                # Run the test 'runs' times to average out statistical noise
+                for _ in range(runs):
+                    hll_a = HyperLogLog(self.standard_error)
+                    hll_b = HyperLogLog(self.standard_error)
+                    set_a = set()
+                    set_b = set()
+                    
+                    overlap_size = int(base_size * pct)
+                    disjoint_size = base_size - overlap_size
+                    
+                    # 1. Insert overlapping items into both (using random salt to ensure unique hashes each run)
+                    run_salt = str(time.time()) 
+                    for i in range(overlap_size):
+                        item = f"overlap_{run_salt}_{i}"
+                        hll_a.insertElem(item)
+                        hll_b.insertElem(item)
+                        set_a.add(item)
+                        set_b.add(item)
+                        
+                    # 2. Insert disjoint items into A
+                    for i in range(disjoint_size):
+                        item = f"a_only_{run_salt}_{i}"
+                        hll_a.insertElem(item)
+                        set_a.add(item)
+                        
+                    # 3. Insert disjoint items into B
+                    for i in range(disjoint_size):
+                        item = f"b_only_{run_salt}_{i}"
+                        hll_b.insertElem(item)
+                        set_b.add(item)
+
+                    # --- Calculate Exact True Metrics ---
+                    true_intersection = len(set_a.intersection(set_b))
+                    total_true_intersection += true_intersection
+                    
+                    # --- Calculate HLL Metrics ---
+                    est_a = hll_a.getCardinality()
+                    est_b = hll_b.getCardinality()
+                    
+                    # Merge B into A to get the Union
+                    hll_a.merge(hll_b)
+                    est_union = hll_a.getCardinality()
+                    
+                    # Inclusion-Exclusion Principle
+                    est_intersection = max(0, est_a + est_b - est_union)
+                    total_est_intersection += est_intersection
+                    
+                    if true_intersection > 0:
+                        total_error_pct += abs(est_intersection - true_intersection) / true_intersection * 100
+                
+                # Average the results
+                avg_true = total_true_intersection / runs
+                avg_est = total_est_intersection / runs
+                avg_error = total_error_pct / runs
+                    
+                writer.writerow([pct * 100, avg_true, avg_est, avg_error])
+                print(f"  Overlap {pct*100:>5.1f}% -> Avg True: {avg_true:>5.0f} | Avg Est: {avg_est:>5.0f} | Avg Error: {avg_error:>6.2f}%")

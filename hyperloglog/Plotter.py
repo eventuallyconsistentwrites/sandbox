@@ -160,6 +160,82 @@ class BenchmarkPlotter:
         plt.ylabel("Megabytes (MB)")
         plt.tight_layout()
 
+    def plot_intersection_results(self, filename="intersection_results.csv"):
+        overlap_pcts, true_intersections, hll_intersections, error_pcts = [], [], [], []
+        
+        with open(self._get_filepath(filename), mode='r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                overlap_pcts.append(float(row["Overlap_Pct"]))
+                true_intersections.append(float(row["True_Intersection"]))
+                hll_intersections.append(float(row["HLL_Intersection"]))
+                error_pcts.append(float(row["Error_Pct"]))
+                
+        # --- Graph 8: The Intersection Trap (Error Compounding) ---
+        plt.figure("The Intersection Trap", figsize=(8, 5))
+        plt.plot(overlap_pcts, error_pcts, marker='o', color=self.C_RED, linewidth=2, label="Estimation Error %")
+        plt.title("The Intersection Trap: Inclusion-Exclusion Error Compounding")
+        plt.xlabel("Set Overlap Percentage (%)")
+        plt.ylabel("Intersection Estimation Error (%)")
+        plt.gca().invert_xaxis() 
+        plt.legend()
+        plt.grid(color='#E5E5E5', linestyle='--', linewidth=1)
+        plt.tight_layout()
+
+        # --- Graph 9: Intersection Volumes Comparison ---
+        plt.figure("Intersection Volume Comparison", figsize=(8, 5))
+        x_labels = [f"{pct}%" for pct in overlap_pcts]
+        x = range(len(x_labels))
+        width = 0.35
+        
+        plt.bar([pos - width/2 for pos in x], true_intersections, width, label='True Intersection', color=self.C_GREY)
+        plt.bar([pos + width/2 for pos in x], hll_intersections, width, label='HLL Estimate', color=self.C_ORANGE)
+        
+        plt.title("Intersection Cardinality: True vs Estimated")
+        plt.xlabel("Set Overlap Percentage")
+        plt.ylabel("Number of Distinct Elements")
+        plt.xticks(x, x_labels)
+        plt.legend()
+        plt.grid(color='#E5E5E5', linestyle='--', linewidth=1, axis='y')
+        plt.tight_layout()
+
+        # --- Graph 10: Signal vs. Noise (Error Proportion) ---
+        plt.figure("Signal vs Noise Proportion", figsize=(8, 5))
+        
+        true_props = []
+        error_props = []
+        
+        # Calculate the relative composition of True Signal vs Absolute Error
+        for true_val, est_val in zip(true_intersections, hll_intersections):
+            abs_err = abs(est_val - true_val)
+            total_magnitude = true_val + abs_err
+            
+            if total_magnitude > 0:
+                true_props.append((true_val / total_magnitude) * 100)
+                error_props.append((abs_err / total_magnitude) * 100)
+            else:
+                true_props.append(0)
+                error_props.append(0)
+                
+        plt.bar(x, true_props, label='True Intersection (Signal)', color=self.C_TEAL, edgecolor=self.C_GREY)
+        # Stack the error bar on top of the true value bar
+        plt.bar(x, error_props, bottom=true_props, label='Absolute Error (Noise)', color=self.C_RED, edgecolor=self.C_GREY)
+        
+        plt.title("Signal vs. Noise: Error Proportion at Shrinking Overlaps")
+        plt.xlabel("Set Overlap Percentage")
+        plt.ylabel("Proportion of Total Magnitude (%)")
+        plt.xticks(x, x_labels)
+        
+        # Add a 50% threshold line to show exactly when noise becomes larger than signal
+        plt.axhline(50, color=self.C_GREY, linestyle='dotted', linewidth=1.5)
+        plt.text(0.5, 52, "50% Noise Threshold", color=self.C_GREY)
+        
+        # Reverse legend order so Noise displays on top of Signal, matching the bar stack
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend(reversed(handles), reversed(labels), loc='upper left')
+        
+        plt.tight_layout()
+
     def show_all(self):
         """Displays all generated figures concurrently."""
         plt.show()
